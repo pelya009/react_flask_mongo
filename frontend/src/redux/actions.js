@@ -1,11 +1,5 @@
-export function fetchCardIfNeeded() {
-    return (dispatch, getState) => {
-        let state = getState().page;
-        if (state.cardData === undefined || state.cardData.slug !== state.cardSlug) {
-            return dispatch(fetchCard());
-        }
-    };
-}
+export const START_FETCHING_CARD = "START_FETCHING_CARD";
+export const FINISH_FETCHING_CARD = "FINISH_FETCHING_CARD";
 
 function fetchCard() {
     return (dispatch, getState) => {
@@ -45,4 +39,13 @@ function apiPath() {
     // контейнера с фронтендом надо будет стучать не в localhost,
     // а в backend.
     return "http://localhost:40001/api/v1";
+}
+
+export function fetchCardIfNeeded() {
+    return (dispatch, getState) => {
+        let state = getState().page;
+        if (state.cardData === undefined || state.cardData.slug !== state.cardSlug) {
+            return dispatch(fetchCard());
+        }
+    };
 }
