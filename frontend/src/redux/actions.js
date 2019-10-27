@@ -1,23 +1,26 @@
+import {isServerSide} from "../utility";
+import fetch from "cross-fetch";
+
+export const ADD_PROMISE = "ADD_PROMISE";
+export const REMOVE_PROMISE = "REMOVE_PROMISE";
 export const START_FETCHING_CARD = "START_FETCHING_CARD";
 export const FINISH_FETCHING_CARD = "FINISH_FETCHING_CARD";
+export const NAVIGATE = "NAVIGATE";
 
 function fetchCard() {
     return (dispatch, getState) => {
-        // Сперва даём состоянию понять, что мы ждём карточку.
-        // Наши компоненты после этого могут, например,
-        // включить характерную анимацию загрузки.
         dispatch(startFetchingCard());
-        // Формируем запрос к API.
         let url = apiPath() + "/card/" + getState().page.cardSlug;
-        // Фетчим, обрабатываем, даём состоянию понять, что
-        // данные карточки уже доступны. Здесь, конечно, хорошо
-        // бы добавить обработку ошибок.
-        return fetch(url)
+        let promise = fetch(url)
             .then(response => response.json())
-            .then(json => dispatch(finishFetchingCard(json)));
+            .then(json => {
+                dispatch(finishFetchingCard(json));
+                // "Я закончил, можете рендерить"
+                dispatch(removePromise(promise));
+            });
+        // "Я запустил промис, дождитесь его"
+        return dispatch(addPromise(promise));
     };
-    // Кстати, именно redux-thunk позволяет нам
-    // использовать в качестве действий лямбды.
 }
 
 function startFetchingCard() {
@@ -34,11 +37,24 @@ function finishFetchingCard(json) {
 }
 
 function apiPath() {
-    // Эта функция здесь неспроста. Когда мы сделаем server-side
-    // rendering, путь к API будет зависеть от окружения - из
-    // контейнера с фронтендом надо будет стучать не в localhost,
-    // а в backend.
+    if (isServerSide()) {
+        return "http://backend:40001/api/v1";
+    }
     return "http://localhost:40001/api/v1";
+}
+
+function addPromise(promise) {
+    return {
+        type: ADD_PROMISE,
+        promise: promise
+    };
+}
+
+function removePromise(promise) {
+    return {
+        type: REMOVE_PROMISE,
+        promise: promise,
+    };
 }
 
 export function fetchCardIfNeeded() {
@@ -48,4 +64,18 @@ export function fetchCardIfNeeded() {
             return dispatch(fetchCard());
         }
     };
+}
+
+export function navigate(link, dontPushState) {
+
+    if (!isServerSide() && !dontPushState) {
+        history.pushState({
+            pathname: link.pathname,
+            href: link.href
+        }, "", link.href);
+    }
+    return {
+        type: NAVIGATE,
+        path: link.pathname
+    }
 }
